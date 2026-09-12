@@ -1,5 +1,8 @@
 # Quick Notes
 
+<!-- deploy pipeline test: this line verifies GitHub -> Vercel auto-deploy -->
+
+
 A tiny full-stack demo:
 
 - **Frontend**: single static `index.html` page (no build step) with a form to submit a note and a list showing every saved note.
