@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quick Notes</title>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f7f7f8;
+    color: #1a1a1a;
+    display: flex;
+    justify-content: center;
+  }
+  main {
+    width: 100%;
+    max-width: 560px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+  }
+  p.subtitle {
+    margin: 0 0 20px;
+    color: #666;
+    font-size: 0.9rem;
+  }
+  form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  input[type="text"] {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #d0d0d5;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #111;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  #status {
+    min-height: 20px;
+    font-size: 0.85rem;
+    color: #b3261e;
+    margin-bottom: 8px;
+  }
+  ul#list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  li {
+    background: #fff;
+    border: 1px solid #e5e5e8;
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  li .content {
+    word-break: break-word;
+  }
+  li .meta {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 4px;
+  }
+  #empty {
+    color: #888;
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Quick Notes</h1>
+  <p class="subtitle">Type something and save it — everyone who opens this page sees the same list.</p>
+
+  <form id="note-form">
+    <input type="text" id="note-input" placeholder="Write a note..." maxlength="500" required />
+    <button type="submit" id="submit-btn">Save</button>
+  </form>
+
+  <div id="status"></div>
+  <p id="empty" hidden>No notes yet — be the first to add one.</p>
+  <ul id="list"></ul>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+  const SUPABASE_URL = "https://rltmdkzlekufojtxgkcb.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsdG1ka3psZWt1Zm9qdHhna2NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0MzcwNjUsImV4cCI6MjEwMTAxMzA2NX0.h4GBgTIA5eOxeHegioGI7w-PFoBagwmEYITQU_NX4vA";
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const form = document.getElementById("note-form");
+  const input = document.getElementById("note-input");
+  const submitBtn = document.getElementById("submit-btn");
+  const list = document.getElementById("list");
+  const statusEl = document.getElementById("status");
+  const emptyEl = document.getElementById("empty");
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleString();
+  }
+
+  function render(notes) {
+    list.innerHTML = "";
+    emptyEl.hidden = notes.length > 0;
+    for (const note of notes) {
+      const li = document.createElement("li");
+      const content = document.createElement("div");
+      content.className = "content";
+      content.textContent = note.content;
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = fmtDate(note.created_at);
+      li.appendChild(content);
+      li.appendChild(meta);
+      list.appendChild(li);
+    }
+  }
+
+  async function loadNotes() {
+    statusEl.textContent = "";
+    const { data, error } = await client
+      .from("notes")
+      .select("id, content, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      statusEl.textContent = "Could not load notes: " + error.message;
+      return;
+    }
+    render(data);
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const content = input.value.trim();
+    if (!content) return;
+
+    submitBtn.disabled = true;
+    statusEl.textContent = "";
+
+    const { error } = await client.from("notes").insert({ content });
+
+    submitBtn.disabled = false;
+
+    if (error) {
+      statusEl.textContent = "Could not save note: " + error.message;
+      return;
+    }
+
+    input.value = "";
+    await loadNotes();
+  });
+
+  loadNotes();
+</script>
+</body>
+</html>
